@@ -1,7 +1,5 @@
 import cv2
-import os
 import serial
-import time  # For delay
 from ultralytics import YOLO
 #revert back to pre distance
 
