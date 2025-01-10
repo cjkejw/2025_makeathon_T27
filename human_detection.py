@@ -3,7 +3,6 @@ import os
 import serial
 import time  # For delay
 from ultralytics import YOLO
-#revert back to pre distance
 
 # Set up serial communication with ESP32
 try:
@@ -57,6 +56,7 @@ while True:
     # YOLOv8 Detection
     results = model(frame)  # Pass the frame to the YOLOv8 model
     human_detected = False
+    human_count = 0  # Initialize human count
 
     # Iterate through detections
     for result in results:
@@ -68,15 +68,16 @@ while True:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])  # Bounding box coordinates
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box for humans
                 human_detected = True
+                human_count += 1  # Increment human count
 
     # Send signals to Arduino
     try:
         if human_detected:
-            ser.write(b'1')  # Send '1' to trigger the buzzer
-            print("[Python] Human detected: Signal '1' sent to Arduino")
+            ser.write(bytes(str(human_count + 1), 'utf-8'))  # Send the number of humans detected + 1
+            print(f"[Python] Human detected: {human_count} humans. Signal sent: {human_count + 1}")
         elif motion_detected:
-            ser.write(b'2')  # Send '2' to indicate motion detected
-            print("[Python] Motion detected: Signal '2' sent to Arduino")
+            ser.write(b'1')  # Send '1' to indicate motion detected
+            print("[Python] Motion detected: Signal '1' sent to Arduino")
         else:
             ser.write(b'0')  # Send '0' to indicate no detection
             print("[Python] No detection: Signal '0' sent to Arduino")
@@ -85,7 +86,7 @@ while True:
         break
 
     # Display the resulting frame with YOLOv8 detections
-    cv2.imshow("Webcam Feed - Human and Motion Detection", frame)
+    cv2.imshow("Webcam Feed - Human Detection", frame)
 
     # Exit the loop if 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):

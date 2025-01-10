@@ -1,39 +1,51 @@
-#define BUZZER_PIN 3  // Pin connected to the buzzer
-#define LED_PIN 4     // Pin connected to the LED
-
-void setup() {
-  pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
-  Serial.begin(9600);  // Start Serial communication
-}
-
-void loop() {
-  if (Serial.available() > 0) {
-    char signal = Serial.read();  // Read data from Python
-
-    if (signal == '1') {
-      // Human detected - activate the buzzer
-      digitalWrite(LED_PIN, LOW); // Ensure LED is OFF for human detection
-      for (int i = 0; i < 20; i++) {  // Loop for 20 fast buzz cycles
-        tone(BUZZER_PIN, 3500);  // Generate a 3.5kHz tone
-        delay(100);              // ON for 100ms
-        noTone(BUZZER_PIN);      // Turn off the buzzer
-        delay(100);              // OFF for 100ms
-
-        // Check if the signal has changed to '0'
-        if (Serial.available() > 0 && Serial.read() == '0') {
-          noTone(BUZZER_PIN);    // Ensure the buzzer is OFF
-          break;                 // Exit the loop
-        }
-      }
-    } else if (signal == '2') {
-      // Motion detected - activate the LED
-      digitalWrite(LED_PIN, HIGH); // Turn ON LED
-      noTone(BUZZER_PIN);          // Ensure the buzzer is OFF
-    } else if (signal == '0') {
-      // No detection - turn everything OFF
-      noTone(BUZZER_PIN);          // Ensure the buzzer is OFF
-      digitalWrite(LED_PIN, LOW);  // Turn OFF LED
-    }
-  }
+#include <Wire.h>  
+#include <LiquidCrystal_I2C.h> 
+ 
+#define BUZZER_PIN 3  // Pin connected to the buzzer 
+#define LED_PIN 4     // Pin connected to the LED 
+LiquidCrystal_I2C lcd(0x27,16,2); 
+ 
+void setup() { 
+  pinMode(BUZZER_PIN, OUTPUT); 
+  pinMode(LED_PIN, OUTPUT); 
+  lcd.init();                      // initialize the lcd  
+  lcd.init(); 
+  lcd.backlight(); 
+  Serial.begin(9600);  // Start Serial communication 
+} 
+ 
+void loop() { 
+  if (Serial.available() > 0) { 
+    char signal = Serial.read();  // Read data from Python 
+ 
+    if (signal >= '2') {  // signal changed to include no. of people 
+      // Human detected - activate the buzzer 
+      digitalWrite(LED_PIN, LOW); // Ensure LED is OFF for human detection 
+      for (int i = 0; i < 20; i++) {  // Loop for 20 fast buzz cycles 
+        lcd.setCursor(0,0); 
+        lcd.print("Human detected"); 
+        lcd.setCursor(0, 1); 
+        lcd.print("Number: "); 
+        lcd.print(signal - '1');  // Convert char to integer and subtract 1 
+        tone(BUZZER_PIN, 3500);  // Generate a 3.5kHz tone 
+        delay(100);              // ON for 100ms 
+        noTone(BUZZER_PIN);      // Turn off the buzzer 
+        delay(100);              // OFF for 100ms 
+ 
+        // Check if the signal has changed to '0' 
+        if (Serial.available() > 0 && Serial.read() == '0') { 
+          noTone(BUZZER_PIN);    // Ensure the buzzer is OFF 
+          break;                 // Exit the loop 
+        } 
+      } 
+    } else if (signal == '1') { //signal changed to '1' 
+      // Motion detected - activate the LED 
+      digitalWrite(LED_PIN, HIGH); // Turn ON LED 
+      noTone(BUZZER_PIN);          // Ensure the buzzer is OFF 
+    } else if (signal == '0') { 
+      // No detection - turn everything OFF 
+      noTone(BUZZER_PIN);          // Ensure the buzzer is OFF 
+      digitalWrite(LED_PIN, LOW);  // Turn OFF LED 
+    } 
+  } 
 }
