@@ -1,33 +1,56 @@
-#define LED_PIN 4
-#define BUZZER_PIN 3
+#include <Wire.h>  
+#include <LiquidCrystal_I2C.h> 
+ 
+#define BUZZER_PIN 3  // Pin connected to the buzzer 
+#define LED_PIN 4     // Pin connected to the LED 
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+ 
+void setup() { 
+  pinMode(BUZZER_PIN, OUTPUT); 
+  pinMode(LED_PIN, OUTPUT); 
+  lcd.init();                      // Initialize the LCD  
+  lcd.backlight(); 
+  Serial.begin(9600);  // Start Serial communication 
+} 
+ 
+void loop() { 
+  if (Serial.available() > 0) { 
+    char signal = Serial.read();  // Read data from Python 
+ 
+    if (signal > '0') {  // Check if human or motion detected (signal > '0') 
+      int human_count = signal - '0';  // Convert char to integer directly
+      
+      if (human_count > 1) {  // Human(s) detected (count > 1)
+        // Activate the buzzer and display the human count
+        digitalWrite(LED_PIN, LOW); // Ensure LED is OFF for human detection 
+        lcd.clear();                // Clear LCD for updated display
+        lcd.setCursor(0, 0); 
+        lcd.print("Human detected"); 
+        lcd.setCursor(0, 1); 
+        lcd.print("Number: "); 
+        lcd.print(human_count);     // Display the number of humans 
 
-void setup() {
-    pinMode(LED_PIN, OUTPUT);
-    pinMode(BUZZER_PIN, OUTPUT);
-
-    Serial.begin(115200); // Initialize serial communication
-}
-
-void loop() {
-    if (Serial.available() > 0) {
-        String data = Serial.readStringUntil('\n'); // Read distance data as a string
-        int distance = data.toInt();               // Convert string to integer
-
-        if (distance > 0 && distance <= 50) {      // Close range (0-50 cm)
-            digitalWrite(LED_PIN, HIGH);           // Turn LED ON
-            tone(BUZZER_PIN, 2000);                // Play buzzer tone at 2kHz
-            delay(500);                            // Active for 500ms
-            noTone(BUZZER_PIN);                    // Stop buzzer
-            digitalWrite(LED_PIN, LOW);            // Turn LED OFF
-        } else if (distance > 50 && distance <= 150) { // Medium range (50-150 cm)
-            digitalWrite(LED_PIN, HIGH);           // LED ON
-            tone(BUZZER_PIN, 1000);                // Play buzzer tone at 1kHz
-            delay(500);                            // Active for 500ms
-            noTone(BUZZER_PIN);                    // Stop buzzer
-            digitalWrite(LED_PIN, LOW);            // LED OFF
-        } else if (distance > 150) {               // Long range (150+ cm)
-            digitalWrite(LED_PIN, LOW);            // LED OFF
-            noTone(BUZZER_PIN);                    // No buzzer
-        }
-    }
+        // Activate the buzzer
+        tone(BUZZER_PIN, 3500);     // Generate a 3.5kHz tone 
+        delay(500);                 // ON for 500ms 
+        noTone(BUZZER_PIN);         // Turn off the buzzer 
+      } else if (human_count == 1) { // Motion detected (signal '1') 
+        // Motion detected - activate the LED 
+        digitalWrite(LED_PIN, HIGH); // Turn ON LED 
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Motion detected");
+        noTone(BUZZER_PIN);          // Ensure the buzzer is OFF 
+      } 
+    } 
+    
+    else if (signal == '0') { 
+      // No detection - turn everything OFF 
+      noTone(BUZZER_PIN);          // Ensure the buzzer is OFF 
+      digitalWrite(LED_PIN, LOW);  // Turn OFF LED 
+      lcd.clear();                 // Clear LCD display
+      lcd.setCursor(0, 0);
+      lcd.print("No detection");
+    } 
+  } 
 }
