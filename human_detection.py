@@ -89,10 +89,10 @@ while True:
     try:
         if human_detected:
             ser.write(b'1')  # Send '1' to trigger the buzzer
-            print("Human detected: Signal sent to ESP32 ('1')")
+            print("Human detected: Beep signal sent to ESP32 ('1')")
         elif motion_detected:
-            ser.write(b'2')  # Send '2' to indicate motion detected
-            print("Motion detected: Signal sent to ESP32 ('2')")
+            ser.write(b'2')  # Send '2' to turn on the LED
+            print("Motion detected: LED signal sent to ESP32 ('2')")
         else:
             ser.write(b'0')  # Send '0' to indicate no detection
             print("No detection: Signal sent to ESP32 ('0')")
