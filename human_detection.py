@@ -1,8 +1,9 @@
 import cv2
 import os
 import serial
-import time  # For delay
+import torch
 from ultralytics import YOLO
+from torchvision import transforms
 
 # Set up serial communication with ESP32
 try:
@@ -14,6 +15,11 @@ except Exception as e:
 
 # Load YOLOv8 model
 model = YOLO("yolov8n.pt")  # Use 'yolov8n.pt' for the Nano model (smallest and fastest)
+
+# Load MiDaS model for depth estimation
+midas = torch.hub.load("intel-isl/MiDaS", "MiDaS_small")
+midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms").small_transform
+midas.eval()
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -56,8 +62,16 @@ while True:
     # YOLOv8 Detection
     results = model(frame)  # Pass the frame to the YOLOv8 model
     human_detected = False
+    nearest_distance = None
 
-    # Iterate through detections
+    # Convert frame for MiDaS depth estimation
+    input_batch = midas_transforms(frame).unsqueeze(0)
+
+    # Perform depth estimation
+    with torch.no_grad():
+        depth_map = midas(input_batch).squeeze().cpu().numpy()
+
+    # Iterate through YOLOv8 detections
     for result in results:
         for box in result.boxes:  # Each detected box
             cls = int(box.cls)  # Class ID
@@ -68,11 +82,25 @@ while True:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box for humans
                 human_detected = True
 
+                # Estimate distance using the depth map
+                depth_roi = depth_map[y1:y2, x1:x2]
+                if depth_roi.size > 0:
+                    avg_depth = depth_roi.mean()  # Average depth within the bounding box
+                    distance = avg_depth  # Use this as an approximation of distance
+
+                    # Check for the nearest human
+                    if nearest_distance is None or distance < nearest_distance:
+                        nearest_distance = distance
+
+                    # Display the distance on the bounding box
+                    cv2.putText(frame, f"Dist: {distance:.2f} m", (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
     # Send signals to Arduino
     try:
         if human_detected:
             ser.write(b'1')  # Send '1' to trigger the buzzer
-            print("[Python] Human detected: Signal '1' sent to Arduino")
+            print(f"[Python] Human detected: Signal '1' sent to Arduino. Nearest distance: {nearest_distance:.2f} m")
         elif motion_detected:
             ser.write(b'2')  # Send '2' to indicate motion detected
             print("[Python] Motion detected: Signal '2' sent to Arduino")
@@ -83,14 +111,13 @@ while True:
         print(f"Error: Failed to send signal to Arduino. {e}")
         break
 
-    # Display the resulting frame with YOLOv8 detections
-    cv2.imshow("Webcam Feed - Human and Motion Detection", frame)
+    # Display the resulting frame with YOLOv8 detections and depth map
+    cv2.imshow("Webcam Feed - Human Detection", frame)
 
     # Exit the loop if 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Cleanup
 cap.release()
 ser.close()
 cv2.destroyAllWindows()
