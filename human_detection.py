@@ -3,6 +3,7 @@ import os
 import serial
 import time  # For delay
 from ultralytics import YOLO
+#revert back to pre distance
 
 # Set up serial communication with ESP32
 try:
