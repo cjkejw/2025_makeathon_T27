@@ -4,6 +4,7 @@ import serial
 import torch
 from ultralytics import YOLO
 from torchvision import transforms
+import numpy as np
 
 # Set up serial communication with ESP32
 try:
@@ -64,12 +65,15 @@ while True:
     human_detected = False
     nearest_distance = None
 
-    # Convert frame for MiDaS depth estimation
-    input_batch = midas_transforms(frame).unsqueeze(0)
+    # Preprocess frame for MiDaS depth estimation
+    input_batch = midas_transforms(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).unsqueeze(0)
 
     # Perform depth estimation
     with torch.no_grad():
         depth_map = midas(input_batch).squeeze().cpu().numpy()
+
+    # Normalize depth map for visualization
+    depth_map_normalized = cv2.normalize(depth_map, None, 0, 1, cv2.NORM_MINMAX)
 
     # Iterate through YOLOv8 detections
     for result in results:
@@ -83,10 +87,10 @@ while True:
                 human_detected = True
 
                 # Estimate distance using the depth map
-                depth_roi = depth_map[y1:y2, x1:x2]
+                depth_roi = depth_map_normalized[y1:y2, x1:x2]
                 if depth_roi.size > 0:
                     avg_depth = depth_roi.mean()  # Average depth within the bounding box
-                    distance = avg_depth  # Use this as an approximation of distance
+                    distance = 1 / (avg_depth + 1e-6)  # Inverse to approximate distance (scaled)
 
                     # Check for the nearest human
                     if nearest_distance is None or distance < nearest_distance:
@@ -113,6 +117,7 @@ while True:
 
     # Display the resulting frame with YOLOv8 detections and depth map
     cv2.imshow("Webcam Feed - Human Detection", frame)
+    cv2.imshow("Depth Map", depth_map_normalized)
 
     # Exit the loop if 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
