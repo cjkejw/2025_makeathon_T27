@@ -1,6 +1,7 @@
 import cv2
 import os
 import serial
+from ultralytics import YOLO
 
 # Set up serial communication with ESP32
 try:
@@ -10,21 +11,8 @@ except Exception as e:
     print(f"Error: Unable to establish serial communication. {e}")
     exit()
 
-fullbody_cascade_path = "haarcascade_fullbody.xml"
-upperbody_cascade_path = "haarcascade_upperbody.xml"
-frontalface_cascade_path = "haarcascade_frontalface_default.xml"
-profileface_cascade_path = "haarcascade_profileface.xml"
-
-# Ensure all cascade files exist
-if not all(os.path.exists(p) for p in [fullbody_cascade_path, upperbody_cascade_path, frontalface_cascade_path, profileface_cascade_path]):
-    print("Error: One or more Haar Cascade files are missing!")
-    exit()
-
-# Load Haar Cascade classifiers
-fullbody_cascade = cv2.CascadeClassifier(fullbody_cascade_path)
-upperbody_cascade = cv2.CascadeClassifier(upperbody_cascade_path)
-frontalface_cascade = cv2.CascadeClassifier(frontalface_cascade_path)
-profileface_cascade = cv2.CascadeClassifier(profileface_cascade_path)
+# Load YOLOv8 model
+model = YOLO("yolov8n.pt")  # Use 'yolov8n.pt' for the Nano model (smallest and fastest)
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -64,35 +52,29 @@ while True:
 
     previous_gray = gray_blur  # Update the previous frame
 
-    # Human Detection
-    human_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # Use unblurred frame
-    fullbodies = fullbody_cascade.detectMultiScale(human_gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
-    upperbodies = upperbody_cascade.detectMultiScale(human_gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
-    frontalfaces = frontalface_cascade.detectMultiScale(human_gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-    profilefaces = profileface_cascade.detectMultiScale(human_gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-
+    # YOLOv8 Detection
+    results = model(frame)  # Pass the frame to the YOLOv8 model
     human_detected = False
-    for (x, y, w, h) in fullbodies:
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green box for full body
-        human_detected = True
-    for (x, y, w, h) in upperbodies:
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)  # Blue box for upper body
-        human_detected = True
-    for (x, y, w, h) in frontalfaces:
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Red box for frontal face
-        human_detected = True
-    for (x, y, w, h) in profilefaces:
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 255, 0), 2)  # Yellow box for profile face
-        human_detected = True
 
-    # Send signal to the microcontroller
+    # Iterate through detections
+    for result in results:
+        for box in result.boxes:  # Each detected box
+            cls = int(box.cls)  # Class ID
+            confidence = float(box.conf)  # Confidence score
+
+            if cls == 0 and confidence > 0.5:  # Class ID 0 = 'person'
+                x1, y1, x2, y2 = map(int, box.xyxy[0])  # Bounding box coordinates
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box for humans
+                human_detected = True
+
+    # Send signals to Arduino
     try:
         if human_detected:
             ser.write(b'1')  # Send '1' to trigger the buzzer
-            print("Human detected: Beep signal sent to ESP32 ('1')")
+            print("Human detected: Signal sent to ESP32 ('1')")
         elif motion_detected:
-            ser.write(b'2')  # Send '2' to turn on the LED
-            print("Motion detected: LED signal sent to ESP32 ('2')")
+            ser.write(b'2')  # Send '2' to indicate motion detected
+            print("Motion detected: Signal sent to ESP32 ('2')")
         else:
             ser.write(b'0')  # Send '0' to indicate no detection
             print("No detection: Signal sent to ESP32 ('0')")
@@ -100,12 +82,11 @@ while True:
         print(f"Error: Failed to send signal to ESP32. {e}")
         break
 
-    # Display the resulting frame (only with human detection bounding boxes)
+    # Display the resulting frame with YOLOv8 detections
     cv2.imshow("Webcam Feed - Human and Motion Detection", frame)
 
     # Exit the loop if 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        print("Exiting program...")
         break
 
 # Cleanup
