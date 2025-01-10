@@ -1,0 +1,33 @@
+#define LED_PIN 4
+#define BUZZER_PIN 3
+
+void setup() {
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(BUZZER_PIN, OUTPUT);
+
+    Serial.begin(115200); // Initialize serial communication
+}
+
+void loop() {
+    if (Serial.available() > 0) {
+        String data = Serial.readStringUntil('\n'); // Read distance data as a string
+        int distance = data.toInt();               // Convert string to integer
+
+        if (distance > 0 && distance <= 50) {      // Close range (0-50 cm)
+            digitalWrite(LED_PIN, HIGH);           // Turn LED ON
+            tone(BUZZER_PIN, 2000);                // Play buzzer tone at 2kHz
+            delay(500);                            // Active for 500ms
+            noTone(BUZZER_PIN);                    // Stop buzzer
+            digitalWrite(LED_PIN, LOW);            // Turn LED OFF
+        } else if (distance > 50 && distance <= 150) { // Medium range (50-150 cm)
+            digitalWrite(LED_PIN, HIGH);           // LED ON
+            tone(BUZZER_PIN, 1000);                // Play buzzer tone at 1kHz
+            delay(500);                            // Active for 500ms
+            noTone(BUZZER_PIN);                    // Stop buzzer
+            digitalWrite(LED_PIN, LOW);            // LED OFF
+        } else if (distance > 150) {               // Long range (150+ cm)
+            digitalWrite(LED_PIN, LOW);            // LED OFF
+            noTone(BUZZER_PIN);                    // No buzzer
+        }
+    }
+}
