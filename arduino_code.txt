@@ -3,12 +3,12 @@
  
 #define BUZZER_PIN 3  // Pin connected to the buzzer 
 #define LED_PIN 4     // Pin connected to the LED 
-LiquidCrystal_I2C lcd(0x27,16,2); 
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
  
 void setup() { 
   pinMode(BUZZER_PIN, OUTPUT); 
   pinMode(LED_PIN, OUTPUT); 
-  lcd.init();                      // initialize the lcd  
+  lcd.init();                      // Initialize the LCD  
   lcd.backlight(); 
   Serial.begin(9600);  // Start Serial communication 
 } 
@@ -17,27 +17,24 @@ void loop() {
   if (Serial.available() > 0) { 
     char signal = Serial.read();  // Read data from Python 
  
-    if (signal >= '1') {  // Check if human or motion detected 
-      int human_count = signal - '1';  // Convert char to integer and subtract 1
+    if (signal > '0') {  // Check if human or motion detected (signal > '0') 
+      int human_count = signal - '0';  // Convert char to integer directly
       
-      if (human_count >= 1) {  // Human detected
-        // Human detected - activate the buzzer and display human count
+      if (human_count > 1) {  // Human(s) detected (count > 1)
+        // Activate the buzzer and display the human count
         digitalWrite(LED_PIN, LOW); // Ensure LED is OFF for human detection 
-        lcd.clear(); // Clear LCD for updated display
+        lcd.clear();                // Clear LCD for updated display
         lcd.setCursor(0, 0); 
         lcd.print("Human detected"); 
         lcd.setCursor(0, 1); 
         lcd.print("Number: "); 
-        lcd.print(human_count);  // Display the number of humans 
+        lcd.print(human_count);     // Display the number of humans 
 
         // Activate the buzzer
-        tone(BUZZER_PIN, 3500);  // Generate a 3.5kHz tone 
-        delay(500);              // ON for 500ms 
-        noTone(BUZZER_PIN);      // Turn off the buzzer 
-        delay(500);              // OFF for 500ms 
-      } 
-      
-      else if (signal == '1') { // Motion detected (signal '1') 
+        tone(BUZZER_PIN, 3500);     // Generate a 3.5kHz tone 
+        delay(500);                 // ON for 500ms 
+        noTone(BUZZER_PIN);         // Turn off the buzzer 
+      } else if (human_count == 1) { // Motion detected (signal '1') 
         // Motion detected - activate the LED 
         digitalWrite(LED_PIN, HIGH); // Turn ON LED 
         lcd.clear();

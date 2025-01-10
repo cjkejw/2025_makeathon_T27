@@ -73,7 +73,7 @@ while True:
     # Send signals to Arduino
     try:
         if human_detected:
-            human_signal = str(human_count + 1)  # Increment count to match Arduino logic
+            human_signal = str(human_count)  # Send the exact count of humans
             ser.write(bytes(human_signal, 'utf-8'))  # Send human count as a string
             print(f"[Python] Human detected: {human_count} humans. Signal sent: {human_signal}")
         elif motion_detected:
