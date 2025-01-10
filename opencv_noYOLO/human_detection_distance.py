@@ -13,6 +13,24 @@ except Exception as e:
 # Load YOLOv8 model
 model = YOLO("yolov8n.pt")  # Load pre-trained YOLOv8 model
 
+# Load Haar Cascade for face detection
+haar_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+
+# Constants for distance estimation
+KNOWN_DISTANCE = 76.2  # Known distance to the reference object in cm
+KNOWN_WIDTH = 14.3     # Known width of the reference object (face) in cm
+FOCAL_LENGTH = None    # Focal length (to be calculated)
+
+# Focal length calculation using a reference image
+def calculate_focal_length(measured_distance, real_width, width_in_pixels):
+    return (width_in_pixels * measured_distance) / real_width
+
+# Distance estimation function
+def estimate_distance(focal_length, real_width, width_in_pixels):
+    if width_in_pixels > 0:
+        return (real_width * focal_length) / width_in_pixels
+    return -1
+
 # Initialize webcam
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -21,9 +39,23 @@ if not cap.isOpened():
 
 print("Webcam initialized. Press 'q' to quit.")
 
-# Constants
-KNOWN_HEIGHT = 1.7  # Average height of a human (meters)
-CALIBRATED_FOCAL_LENGTH = 700  # Calibrated focal length in pixels (adjust after calibration)
+# Capture a reference frame to calculate focal length
+ret, ref_frame = cap.read()
+if not ret:
+    print("Error: Failed to capture reference frame.")
+    exit()
+
+# Detect face in the reference frame
+gray_ref = cv2.cvtColor(ref_frame, cv2.COLOR_BGR2GRAY)
+faces_ref = haar_cascade.detectMultiScale(gray_ref, scaleFactor=1.1, minNeighbors=5)
+
+if len(faces_ref) > 0:
+    x, y, w, h = faces_ref[0]
+    FOCAL_LENGTH = calculate_focal_length(KNOWN_DISTANCE, KNOWN_WIDTH, w)
+    print(f"Focal Length Calculated: {FOCAL_LENGTH:.2f}")
+else:
+    print("No face detected in the reference frame. Ensure proper setup.")
+    exit()
 
 while True:
     ret, frame = cap.read()
@@ -31,7 +63,7 @@ while True:
         print("Error: Failed to capture frame. Exiting...")
         break
 
-    # YOLOv8 Detection
+    # YOLOv8 Human Detection
     results = model(frame)
     human_detected = False
 
@@ -42,19 +74,31 @@ while True:
 
             if cls == 0 and confidence > 0.5:  # If class is "person" and confidence is high
                 x1, y1, x2, y2 = map(int, box.xyxy[0])  # Bounding box coordinates
-                pixel_height = y2 - y1  # Bounding box height in pixels
+                human_detected = True
 
-                # Distance estimation
-                if pixel_height > 0:
-                    distance = (KNOWN_HEIGHT * CALIBRATED_FOCAL_LENGTH) / pixel_height
-                    print(f"Estimated Distance: {distance:.2f} meters")
+                # Detect face within YOLO bounding box using Haar Cascade
+                roi = frame[y1:y2, x1:x2]
+                gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+                faces = haar_cascade.detectMultiScale(gray_roi, scaleFactor=1.1, minNeighbors=5)
 
-                    # Draw bounding box and display distance
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(frame, f"Dist: {distance:.2f}m", (x1, y1 - 10),
+                for (fx, fy, fw, fh) in faces:
+                    # Adjust face coordinates relative to the original frame
+                    face_x1 = x1 + fx
+                    face_y1 = y1 + fy
+                    face_x2 = face_x1 + fw
+                    face_y2 = face_y1 + fh
+
+                    # Estimate distance to the face
+                    distance = estimate_distance(FOCAL_LENGTH, KNOWN_WIDTH, fw)
+                    print(f"Estimated Distance: {distance:.2f} cm")
+
+                    # Draw bounding box for the face
+                    cv2.rectangle(frame, (face_x1, face_y1), (face_x2, face_y2), (0, 255, 0), 2)
+                    cv2.putText(frame, f"Dist: {distance:.2f}cm", (face_x1, face_y1 - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-                human_detected = True
+                # Draw YOLO bounding box for the human
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
     # Send signal to Arduino
     try:
