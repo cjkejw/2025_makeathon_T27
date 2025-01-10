@@ -1,6 +1,7 @@
 import cv2
 import os
 import serial
+import time  # For delay
 from ultralytics import YOLO
 
 # Set up serial communication with ESP32
@@ -71,15 +72,15 @@ while True:
     try:
         if human_detected:
             ser.write(b'1')  # Send '1' to trigger the buzzer
-            print("Human detected: Signal sent to ESP32 ('1')")
+            print("[Python] Human detected: Signal '1' sent to Arduino")
         elif motion_detected:
             ser.write(b'2')  # Send '2' to indicate motion detected
-            print("Motion detected: Signal sent to ESP32 ('2')")
+            print("[Python] Motion detected: Signal '2' sent to Arduino")
         else:
             ser.write(b'0')  # Send '0' to indicate no detection
-            print("No detection: Signal sent to ESP32 ('0')")
+            print("[Python] No detection: Signal '0' sent to Arduino")
     except Exception as e:
-        print(f"Error: Failed to send signal to ESP32. {e}")
+        print(f"Error: Failed to send signal to Arduino. {e}")
         break
 
     # Display the resulting frame with YOLOv8 detections

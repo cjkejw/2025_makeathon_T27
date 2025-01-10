@@ -15,26 +15,25 @@ void loop() {
       // Human detected - activate the buzzer
       digitalWrite(LED_PIN, LOW); // Ensure LED is OFF for human detection
       for (int i = 0; i < 20; i++) {  // Loop for 20 fast buzz cycles
-        tone(BUZZER_PIN, 5000);  // Generate a 5kHz tone
-        delay(20);               // ON for 20ms
+        tone(BUZZER_PIN, 3500);  // Generate a 3.5kHz tone
+        delay(100);              // ON for 100ms
+        noTone(BUZZER_PIN);      // Turn off the buzzer
+        delay(100);              // OFF for 100ms
 
-        // Check if the signal has changed to '0' to stop immediately
+        // Check if the signal has changed to '0'
         if (Serial.available() > 0 && Serial.read() == '0') {
-          noTone(BUZZER_PIN);        // Turn off the buzzer
-          break;                    // Exit the loop
+          noTone(BUZZER_PIN);    // Ensure the buzzer is OFF
+          break;                 // Exit the loop
         }
-
-        noTone(BUZZER_PIN);  // Turn off the tone
-        delay(20);           // OFF for 20ms
       }
     } else if (signal == '2') {
       // Motion detected - activate the LED
-      digitalWrite(LED_PIN, HIGH);
-      noTone(BUZZER_PIN);  // Ensure the buzzer is OFF for motion detection
+      digitalWrite(LED_PIN, HIGH); // Turn ON LED
+      noTone(BUZZER_PIN);          // Ensure the buzzer is OFF
     } else if (signal == '0') {
       // No detection - turn everything OFF
-      noTone(BUZZER_PIN);         // Ensure the buzzer is OFF
-      digitalWrite(LED_PIN, LOW); // Ensure the LED is OFF
+      noTone(BUZZER_PIN);          // Ensure the buzzer is OFF
+      digitalWrite(LED_PIN, LOW);  // Turn OFF LED
     }
   }
 }
