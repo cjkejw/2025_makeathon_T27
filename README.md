@@ -68,6 +68,7 @@ Our system aims to tackle this by providing **real-time detection and alerts**.
    ```bash
    git clone https://github.com/your-repo-url.git
    cd 2025_makeathon_T27
+
 2️⃣ Install dependencies:
   ```bash
   pip install ultralytics opencv-python numpy
@@ -75,6 +76,7 @@ Our system aims to tackle this by providing **real-time detection and alerts**.
 3️⃣ Run the human detection script:
    ```bash
    python human_detection.py
+
 4️⃣ For Arduino integration, upload arduino_code.txt to the microcontroller.
 
 
