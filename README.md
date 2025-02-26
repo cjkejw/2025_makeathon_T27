@@ -65,7 +65,7 @@ Our system aims to tackle this by providing **real-time detection and alerts**.
 
 ## 📌 How to Run  
 1️⃣ Clone the repository:  
-   git clone https://github.com/your-repo-url.git
+   git clone https://github.com/cjkejw/2025_makeathon_T27.git \n
    cd 2025_makeathon_T27
 
 2️⃣ Install dependencies:
