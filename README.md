@@ -30,13 +30,10 @@ Our system aims to tackle this by providing **real-time detection and alerts**.
 
 ---
 
-## 🔬 Technology Stack  
+## 🔬 Tech Stack  
 - **YOLOv8 (Ultralytics)** – High-speed object detection  
 - **Python (OpenCV, Ultralytics)** – Image processing
 - **Arduino** (Sensor integration for alert system)  
-
----
-
 
 ---
 
